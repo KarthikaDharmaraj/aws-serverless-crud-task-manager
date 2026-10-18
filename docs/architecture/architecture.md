@@ -6,9 +6,11 @@ A learning project to build a serverless task management application using AWS m
 
 The application is designed to support creating, viewing, updating, and deleting tasks.
 
+
 ## Architecture
 
-![AWS Serverless CRUD Task Manager Architecture](docs/architecture/architecture.png).
+![AWS Serverless CRUD Task Manager Architecture](docs/architecture/architecture.png)
+
 ### AWS Services
 
 - **Amazon S3:** Hosts the static frontend.
