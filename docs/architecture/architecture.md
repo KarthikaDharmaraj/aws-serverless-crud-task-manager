@@ -8,8 +8,7 @@ The application is designed to support creating, viewing, updating, and deleting
 
 ## Architecture
 
-![AWS Serverless CRUD Task Manager Architecture](docs/architecture/architecture.png)
-
+![AWS Serverless CRUD Task Manager Architecture](docs/architecture/architecture.png).
 ### AWS Services
 
 - **Amazon S3:** Hosts the static frontend.
