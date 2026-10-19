@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Manager</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Task Manager</h1>
+      <p class="subtitle">AWS Serverless CRUD project — Phase 1 (browser storage)</p>
+    </header>
+
+    <!-- Create -->
+    <section class="card" aria-labelledby="add-heading">
+      <h2 id="add-heading">Add a task</h2>
+      <form id="task-form" novalidate>
+        <label for="task-title">Title</label>
+        <input id="task-title" name="title" type="text" maxlength="100" required
+               placeholder="e.g. Create the DynamoDB table">
+
+        <label for="task-description">Description <span class="optional">(optional)</span></label>
+        <textarea id="task-description" name="description" rows="2" maxlength="500"></textarea>
+
+        <p id="form-error" class="error" role="alert"></p>
+        <button type="submit" class="btn primary">Add task</button>
+      </form>
+    </section>
+
+    <!-- Read / Update / Delete -->
+    <section class="card" aria-labelledby="list-heading">
+      <div class="list-header">
+        <h2 id="list-heading">Tasks</h2>
+        <div class="filters" role="group" aria-label="Filter tasks">
+          <button type="button" class="filter active" data-filter="all" aria-pressed="true">All</button>
+          <button type="button" class="filter" data-filter="active" aria-pressed="false">Active</button>
+          <button type="button" class="filter" data-filter="completed" aria-pressed="false">Completed</button>
+        </div>
+      </div>
+      <p id="task-count" class="muted"></p>
+      <ul id="task-list" class="task-list"></ul>
+      <p id="empty-state" class="muted empty" hidden></p>
+    </section>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
