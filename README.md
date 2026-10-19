@@ -67,8 +67,8 @@ AWS charges may apply depending on the account plan, service usage, and applicab
 
 - [x] Create the GitHub repository.
 - [x] Document the project objectives and planned architecture.
-- [ ] Build the frontend.
-- [ ] Host the frontend on Amazon S3.
+- [x]  Build the frontend.
+- [x] Host the frontend on Amazon S3.
 - [ ] Create the DynamoDB table.
 - [ ] Implement and test Lambda functions.
 - [ ] Configure API Gateway routes and integrations.
