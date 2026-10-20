@@ -3,84 +3,91 @@
 /* =========================================================================
    1. STORAGE LAYER
    -------------------------------------------------------------------------
-   Phase 1: tasks are kept in the browser's localStorage.
-   Phase 6: replace the body of each taskApi function with a fetch() call
-   to API Gateway. Keep the same function names, arguments and return
-   values, and the UI code further down will not need to change.
+   Phase 6: tasks are stored in DynamoDB through API Gateway and Lambda.
+   (Phase 1 used localStorage. The function names, arguments and return
+   values are unchanged, so the UI code further down did not change.)
 
-   Each function is labelled with the API route it will map to.
+   The UI tracks completion as status: 'pending' | 'completed', while the
+   API uses completed: true | false. toUi() and toApi() translate between
+   the two, so that difference stays inside this layer.
    ========================================================================= */
 
-const STORAGE_KEY = 'task-manager.tasks';
+const API_BASE = 'https://7yaglrsa5d.execute-api.eu-central-1.amazonaws.com';
+const REQUEST_TIMEOUT_MS = 10000;
 
-function readAll() {
+// API task -> UI task
+function toUi(apiTask) {
+  const { completed, ...rest } = apiTask;
+  return { ...rest, status: completed ? 'completed' : 'pending' };
+}
+
+// UI changes -> API request body (only the fields the API accepts)
+function toApi(changes) {
+  const body = {};
+  if ('title' in changes) body.title = changes.title;
+  if ('description' in changes) body.description = changes.description;
+  if ('status' in changes) body.completed = changes.status === 'completed';
+  return body;
+}
+
+// Shared fetch wrapper: JSON in/out, timeout, and consistent errors.
+// A 404 throws 'Task not found', which the UI already handles.
+async function request(path, { method = 'GET', body } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
   } catch (err) {
-    console.error('Could not read tasks from storage:', err);
-    return [];
+    throw new Error(err.name === 'AbortError' ? 'Request timed out' : 'Network error');
+  } finally {
+    clearTimeout(timer);
   }
-}
 
-function writeAll(tasks) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-}
+  if (response.status === 404) throw new Error('Task not found');
+  if (response.status === 204) return null; // DELETE has no body
 
-function generateId() {
-  if (window.crypto && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error((data && data.message) || `Request failed (${response.status})`);
   }
-  // Fallback for older browsers
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  return data;
 }
 
 const taskApi = {
   // GET /tasks
   async listTasks() {
-    return readAll();
+    const tasks = await request('/tasks');
+    return tasks.map(toUi);
   },
 
   // GET /tasks/{id}  (not used by the UI yet, included to match the API)
   async getTask(id) {
-    const task = readAll().find((t) => t.id === id);
-    if (!task) throw new Error('Task not found');
-    return task;
+    return toUi(await request(`/tasks/${encodeURIComponent(id)}`));
   },
 
   // POST /tasks
   async createTask({ title, description }) {
-    const now = new Date().toISOString();
-    const task = {
-      id: generateId(),
-      title,
-      description,
-      status: 'pending',
-      createdAt: now,
-      updatedAt: now,
-    };
-    const tasks = readAll();
-    tasks.push(task);
-    writeAll(tasks);
-    return task;
+    return toUi(await request('/tasks', { method: 'POST', body: { title, description } }));
   },
 
   // PUT /tasks/{id}
   async updateTask(id, changes) {
-    const tasks = readAll();
-    const index = tasks.findIndex((t) => t.id === id);
-    if (index === -1) throw new Error('Task not found');
-    tasks[index] = { ...tasks[index], ...changes, updatedAt: new Date().toISOString() };
-    writeAll(tasks);
-    return tasks[index];
+    return toUi(await request(`/tasks/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: toApi(changes),
+    }));
   },
 
   // DELETE /tasks/{id}
   async deleteTask(id) {
-    const tasks = readAll();
-    const remaining = tasks.filter((t) => t.id !== id);
-    if (remaining.length === tasks.length) throw new Error('Task not found');
-    writeAll(remaining);
+    await request(`/tasks/${encodeURIComponent(id)}`, { method: 'DELETE' });
   },
 };
 
@@ -246,7 +253,7 @@ function handleError(err, fallbackMessage) {
   console.error(err);
   const message = err.message === 'Task not found' ? 'That task no longer exists.' : fallbackMessage;
   showStatus(message, true);
-  refresh();
+  refresh().catch((refreshErr) => console.error(refreshErr)); // API may be unreachable
 }
 
 /* =========================================================================
